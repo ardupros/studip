@@ -5,7 +5,7 @@ This script is written for **Python 2.7.11** and is compatible with **Windows**,
 It may also work for Python 2.7.9 and greater.<br />
 The purpose of this script is to check for new files on the StudIP-Website of the University of Passau, which are then downloaded and saved in your desired destination folder.<br />
 You can currently select one of the following services for storing the downloaded files:
-- Saving on your local drive:
+- Saving on your local drive
 - Saving on:
   - Dropbox
   - Google Drive
