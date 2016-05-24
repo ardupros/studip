@@ -11,7 +11,7 @@ You can currently select one of the following services for storing the downloade
   - Google Drive
   - OneDrive
 
-##Required Modules
+##Required modules
 Required modules (depending on which service you choose):
 - Required for all services: *requests*
 - Required for Dropbox: *dropbox*
@@ -23,7 +23,7 @@ These modules will be installed automatically as soon as they are needed. Theref
 ##Usage
 Download the script, navigate to its directory and execute the script with `python request.py`
 
-######Optional Parameters:
+####Optional parameters:
 Use: `python request.py -[parameter]`. `-[parameter]` can be one of the following:
 
 | Parameter | Description |
