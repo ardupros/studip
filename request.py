@@ -123,7 +123,7 @@ def drawProgressBar(string, percent, barLen = 20):
             progress += "#"
         else:
             progress += " "
-    sys.stdout.write("\r%s [ %s ] %.2f%%" % (string, progress, percent * 100))
+    sys.stdout.write("\r%s [ %s ] %.0f%%" % (string, progress, percent * 100))
     sys.stdout.flush()
 
 def write_line_in_file(file, line, string):
@@ -144,20 +144,32 @@ def read_directory_from_console():
 	while temp_save_path == "":
 		temp_save_path = raw_input("Please enter the absolute path to the folder where I should save your downloaded files:\n")
 		if not os.path.exists(temp_save_path):
-			print "This directory doesn't exist\n"
-			temp_save_path = ""
+			yesorno = raw_input("I can't find the directory '" + temp_save_path + "'. Should I create it for you? <y/n>\n")
+			if yesorno == "y":
+				try:
+					os.makedirs(temp_save_path)
+					print "Folder successfully created\n"
+				except Exception, e:
+					print "Folder could not be created\n"
+					temp_save_path = ""
+			elif yesorno == "n":
+				print "Aborted\n"
+				temp_save_path = ""
+			else:
+				print "Invalid input\n"
+				temp_save_path = ""
 		elif os.path.isfile(temp_save_path):
 			print "This is a file, not a directory\n"
 			temp_save_path = ""
 	return temp_save_path
 
-def read_username_from_console():	# TODO: Add check, wether username has a specific length depending on the studip rules for usernames
+def read_username_from_console():
 	temp_username = ""
 	while temp_username == "":
 		temp_username = raw_input("Please enter your studip-username:\n")
 	return temp_username
 	
-def read_password_from_console():		# TODO: Add check, wether password has a specific length depending on the studip rules for passwords
+def read_password_from_console():
 	temp_password = ""
 	while temp_password == "":
 		temp_password = getpass.getpass("Please enter your studip-password:\n")
@@ -221,7 +233,7 @@ def read_dropbox_directory_from_console(client):
 				print "Your selected path contains one or more of these unallowed characters: " + str(FORBIDDEN_CHARS_PATH)
 				temp_save_path = ""
 			else:
-				yesorno = raw_input("I can't find the directory " + temp_save_path + " in your Dropbox. Should I create it for you? <y/n>\n")
+				yesorno = raw_input("I can't find the directory '" + temp_save_path + "' in your Dropbox. Should I create it for you? <y/n>\n")
 				if yesorno == "y":
 					client.file_create_folder(temp_save_path)
 					print "Folder successfully created\n"
@@ -261,7 +273,7 @@ def read_onedrive_directory_from_console(client):
 						break
 				folderindex += 1
 			if exists == False:
-				print "I can't find the directory " + orig_temp_path + " in your Dropbox. Please create this directory first\n"
+				print "I can't find the directory '" + orig_temp_path + "' on OneDrive. Please create this directory first\n"
 				temp_path = ""
 	return id
 
@@ -281,7 +293,7 @@ def read_drive_directory_from_console(service):
 					temp_save_path = temp_save_path[1:]
 				if temp_save_path[-1] == "/":
 					temp_save_path = temp_save_path[:-1]
-				foldernames = temp_save_path.split('/')	# TODO: Check two slashes
+				foldernames = temp_save_path.split('/')
 				index = 0
 				exists = False
 				response = drive_service.files().list(q = "mimeType = 'application/vnd.google-apps.folder' and 'root' in parents").execute()
@@ -300,7 +312,7 @@ def read_drive_directory_from_console(service):
 							exists = True
 							break;
 				if exists == False:
-					print "I can't find the directory " + orig_temp_save_path + " on Google Drive. Please create this directory first\n"
+					print "I can't find the directory '" + orig_temp_save_path + "' on Google Drive. Please create this directory first\n"
 					temp_save_path = ""
 			except Exception, e:
 				print "Exception code: " + str(e)
@@ -402,9 +414,14 @@ def savefile(directoryname, file):
 			createdfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
 			id = createdfolder.get('id')
 		file_metadata = {'name' : filename, 'parents': [id]}
+		response = drive_service.files().list(q = "mimeType = '" + filemimetype + "' and '" + id + "' in parents").execute()	# TODO: needs to be tested, if existing files are deleted, which means overwrite old files
+		for f in response.get('files', []):
+			if f.get('name') == filename:
+				file_id = f.get('id')
+				drive_service.files().delete(fileId=file_id).execute()
 		media = MediaFileUpload(file.name, mimetype=filemimetype, resumable=True)
 		file_uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-	elif wheretosave == "OneDrive":
+	elif wheretosave == "OneDrive":		# TODO: Make sure, that if the file allready exists it will be overwritten
 		collection = onedriveclient.item(drive="me", id=save_path).children.get()
 		exists = False
 		id = ""
@@ -432,7 +449,7 @@ def savefile(directoryname, file):
 				dropboxclient.file_create_folder(tosave_directory)
 		except Exception, e:
 			dropboxclient.file_create_folder(tosave_directory)
-		response = dropboxclient.put_file(tosave_directory + "/" + filename, file)
+		response = dropboxclient.put_file(tosave_directory + "/" + filename, file, overwrite = True)
 		
 # Check python version, as this script is made for Python 2.7.11
 version = sys.version_info
@@ -514,7 +531,6 @@ if len(paraminput)-1 == 1:
 					onedriveclient = get_onedrive_client_from_console(False)
 					save_path = read_onedrive_directory_from_console(onedriveclient)
 					write_line_in_file(configfilepath, ONEDRIVESAVEPATHLINE, save_path)
-					pass
 				elif wheretosave == "Dropbox":
 					install_and_import_package('dropbox')
 					try:
@@ -897,6 +913,8 @@ try:
 	r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/start", cookies = cookies_seminar_session_and_shibsession, allow_redirects = False)
 
 	# Send requests to receive the StudIP courses website
+	reload(sys)
+	sys.setdefaultencoding('utf-8')
 	r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/my_courses", cookies = cookies_seminar_session_and_shibsession, allow_redirects = False)
 	html = r.text
 
@@ -944,8 +962,6 @@ try:
 					coursename =  ''.join([c for c in coursename if c not in sc])
 					pathtozip = path.join(appdatapath, coursename + ".zip")
 					pathtoextractzip = path.join(appdatapath, coursename)
-					reload(sys)
-					sys.setdefaultencoding('utf-8')
 					with open(pathtozip, "wb") as code:
 						code.write(r.content)
 					print "Done"
@@ -953,32 +969,28 @@ try:
 						os.makedirs(pathtoextractzip)			
 					zip = zipfile.ZipFile(pathtozip, 'r')
 					numberoffiles = len(zip.infolist())
-					progress = 1
 					for file in zip.infolist():
-						drawProgressBar("Extracting zip-archive: ", progress*(1.0/numberoffiles))
 						filename = file.filename
 						tosave = path.join(pathtoextractzip, filename)
 						outputfile = open(tosave, "wb")
 						shutil.copyfileobj(zip.open(filename), outputfile)
 						outputfile.close()
-						progress += 1
 					zip.close()
 					if os.path.exists(pathtozip):
-						pass
 						os.remove(pathtozip)
 					files = os.listdir(pathtoextractzip)
-					print "\nDone"
-					numberoffiles = len(files)
-					progress = 1
+					numberoffiles = len(files) - 1
+					progress = 0
+					drawProgressBar("Saving files: ", progress * (1.0 / numberoffiles))
 					for file in files:
-						drawProgressBar("Saving files: ", progress*(1.0/numberoffiles))
 						filepath = path.join(pathtoextractzip, file)
 						if not os.path.isdir(filepath):
-							if not filepath.endswith('.csv'):
+							if not filepath.endswith('dateiliste.csv'):
 								newfile = open(filepath, 'rb')
 								savefile(coursename, newfile)
 								newfile.close()
-						progress += 1
+								progress += 1
+						drawProgressBar("Saving files: ", progress * (1.0 / numberoffiles))
 					print "\nDone"
 					shutil.rmtree(pathtoextractzip)
 			index_tr_open = tbody.find('<tr>', index_tr_open + len('<tr>'))
@@ -996,5 +1008,3 @@ try:
 	write_to_logfile("Script finished")
 except Exception, e:
 	handle_error(e)
-	
-	
