@@ -221,7 +221,7 @@ def read_dropbox_directory_from_console(client):
 				print "Your selected path contains one or more of these unallowed characters: " + str(FORBIDDEN_CHARS_PATH)
 				temp_save_path = ""
 			else:
-				yesorno = raw_input("I can't find the directory " + temp_save_path + " in your Dropbox. Should I create it for you? <y/n>\n")
+				yesorno = raw_input("I can't find the directory '" + temp_save_path + "' in your Dropbox. Should I create it for you? <y/n>\n")
 				if yesorno == "y":
 					client.file_create_folder(temp_save_path)
 					print "Folder successfully created\n"
@@ -261,7 +261,7 @@ def read_onedrive_directory_from_console(client):
 						break
 				folderindex += 1
 			if exists == False:
-				print "I can't find the directory " + orig_temp_path + " in your Dropbox. Please create this directory first\n"
+				print "I can't find the directory '" + orig_temp_path + "' on OneDrive. Please create this directory first\n"
 				temp_path = ""
 	return id
 
@@ -300,7 +300,7 @@ def read_drive_directory_from_console(service):
 							exists = True
 							break;
 				if exists == False:
-					print "I can't find the directory " + orig_temp_save_path + " on Google Drive. Please create this directory first\n"
+					print "I can't find the directory '" + orig_temp_save_path + "' on Google Drive. Please create this directory first\n"
 					temp_save_path = ""
 			except Exception, e:
 				print "Exception code: " + str(e)
