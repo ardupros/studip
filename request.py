@@ -350,29 +350,6 @@ def write_to_logfile(string):
 def print_and_log(string):
 	write_to_logfile(string)
 	print string
-			
-def print_dropbox_folders(client, metadata, tabs, toppath):
-	path = metadata['path']
-	indexof_slashes = [i for i, ltr in enumerate(toppath) if ltr == '/']
-	if len(indexof_slashes) >= 1:
-		z = indexof_slashes[len(indexof_slashes)-1]
-		lowerpart = toppath[:z].lower()
-		normalpart = toppath[z:]
-	else:
-		lowerpart = ""
-		normalpart = toppath
-	toprint = path.replace(lowerpart + toppath + "/", "")
-	print tabs + toprint
-	try:
-		list = metadata['contents']
-		folderlist = None
-		index = 0
-		while index < len(list):
-			if list[index]['is_dir'] == True:
-				print_dropbox_folders(client, client.metadata(list[index]['path']), tabs + "   ", path)
-			index += 1
-	except:
-		pass
 
 def savefile(directoryname, file):
 	filename = os.path.basename(file.name)
@@ -472,7 +449,10 @@ elif sys.platform == 'darwin':
 	appdatapath = path.join("/Users/" + getpass.getuser() + "/Library/Application Support", APPNAME)
 	configfilepath = path.join(appdatapath, CONFIGFILENAME)
 else:
-	appdatapath = path.expanduser(path.join("~", "." + APPNAME))
+	user = os.getenv("USER")
+	if user == "root":
+		user = os.getenv("SUDO_USER")
+	appdatapath =  os.path.expanduser(path.join("~" + user +"/." + APPNAME))
 	configfilepath = path.join(appdatapath, CONFIGFILENAME)
 	
 # Handle command line arguments
@@ -808,7 +788,6 @@ else:	# Read from config-file
 		install_and_import_package('dropbox')
 		dropboxclient = dropbox.client.DropboxClient(read_line_in_file(configfilepath, DROPBOXKEYLINE))
 		save_path = read_line_in_file(configfilepath, DROPBOXSAVEPATHLINE)
-		#print_dropbox_folders(dropboxclient, folder_metadata = dropboxclient.metadata('/'), "", "root")
 	username = read_line_in_file(configfilepath, USERNAMELINE)
 	password_encrypted = read_line_in_file(configfilepath, PASSWORDLINE)
 	password = base64.b64decode(password_encrypted)
