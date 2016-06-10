@@ -52,7 +52,6 @@ LOGFILENAME = "studip.log"
 DRIVESJSONNAME = "client_secret.json"
 DRIVECREDENTIALSNAME = "usercred.json"
 SCOPES = 'https://www.googleapis.com/auth/drive'
-
 JSONTEXT = '{"installed":{"client_id":"159043213923-6b0eehkfgu23ougnvga8hs9jc0oc0uqp.apps.googleusercontent.com","project_id":"eighth-radio-129614","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://accounts.google.com/o/oauth2/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"DSgbLaIsZx4IU8bYNzJGr9gV","redirect_uris":["urn:ietf:wg:oauth:2.0:oob","http://localhost"]}}'
 
 
@@ -522,6 +521,30 @@ def savefile(directoryname, file):
 
 
 def main():
+    global username
+    global password
+    global save_path
+    global dropboxkey
+    global configfilepath
+    global appdatapath
+    global createlogfile
+    global overwrite
+    global wheretosave
+    global drive_service
+    global dropboxclient
+    global onedriveclient
+    username = ""
+    password = ""
+    save_path = ""
+    dropboxkey = ""
+    configfilepath = ""
+    appdatapath = ""
+    createlogfile = ""
+    overwrite = ""
+    wheretosave = ""
+    drive_service = None
+    dropboxclient = None
+    onedriveclient = None
     # Check python version, as this script is made for Python 2.7.11
     version = sys.version_info
     if version[0] == 2:
@@ -541,19 +564,6 @@ def main():
         print "This script was written for Python 2.7.11, your current version is " + str(version[0]) + "." + str(
             version[1]) + "." + str(version[2])
         print "It may happen that the script doesn't work as expected, so consider changing to the appropriate version"
-
-    username = ""
-    password = ""
-    save_path = ""
-    dropboxkey = ""
-    configfilepath = ""
-    appdatapath = ""
-    createlogfile = ""
-    overwrite = ""
-    wheretosave = ""
-    drive_service = None
-    dropboxclient = None
-    onedriveclient = None
 
     install_and_import_package('requests')
 
