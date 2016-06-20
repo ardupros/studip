@@ -34,7 +34,7 @@ REDIRECTURI = "http://localhost:8080"
 FORBIDDEN_CHARS = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
 FORBIDDEN_CHARS_PATH = ['<', '>', ':', '"', '|', '?', '*']
 
-COUNT_DATA_STORED_IN_CONFIG = 7
+COUNT_DATA_STORED_IN_CONFIG = 9
 WHERETOSAVELINE = 1
 LOCALSAVEPATHLINE = 2
 DROPBOXSAVEPATHLINE = 2
@@ -45,8 +45,11 @@ PASSWORDLINE = 4
 LOGFILELINE = 5
 DROPBOXKEYLINE = 6
 OVERWRITELINE = 7
+NOTIFICATIONLINE = 8
+PUSHBULLETKEYLINE = 9
 
 DEFAULTWRITELOGFILE = "False"
+DEFAULTNOTIFICATIONLINE = "False"
 CONFIGFILENAME = "config.conf"
 LOGFILENAME = "studip.log"
 DRIVESJSONNAME = "client_secret.json"
@@ -92,6 +95,20 @@ def install_and_import_package(packagename):
             import pip
             pip.main(['install', packagename])
             globals()['onedrivesdk'] = importlib.import_module('onedrivesdk')
+    elif packagename == "pushbullet":
+        try:
+            globals()['pushbullet'] = importlib.import_module('pushbullet')
+        except ImportError:
+            try:
+                is_admin = os.getuid() == 0
+            except AttributeError:
+                is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+            if is_admin == False:
+                print "You haven't installed the required  '" + packagename + "'-module, please restart this script with administrator-privileges, so that I can install it for you."
+                sys.exit()
+            import pip
+            pip.main(['install', packagename + ".py"])
+            globals()['pushbullet'] = importlib.import_module('pushbullet')
     else:
         try:
             globals()[packagename] = importlib.import_module(packagename)
@@ -360,8 +377,9 @@ def print_help():
     print " -c [change directory]		Change the directory where the downloaded files are stored"
     print " -u [username]			Change the username, that is used for the studip login"
     print " -p [password]			Change the password, that is used for the studip login"
-    print " -f [force override]			Forces to override files that already exist"
+    print " -f [force override]		Forces to override files that already exist"
     print " -l [logfile]			Enables or disables logfiles"
+    print " -n [notification]              Enables or disables notifications via Pushbullet for new files"
     print " -r [reset]			Resets all your settings"
 
 
@@ -528,6 +546,8 @@ def main():
     global configfilepath
     global appdatapath
     global createlogfile
+    global notification
+    global pushbulletkey
     global overwrite
     global wheretosave
     global drive_service
@@ -540,6 +560,8 @@ def main():
     configfilepath = ""
     appdatapath = ""
     createlogfile = ""
+    notification = ""
+    pushbulletkey = ""
     overwrite = ""
     wheretosave = ""
     drive_service = None
@@ -856,6 +878,42 @@ def main():
                     else:
                         print "Invalid input\n"
             sys.exit()
+        elif paraminput[1] == "-n":
+            if not os.path.exists(configfilepath):
+                print "This option is not availible, until you restart the script without a command line argument"
+            else:
+                enableordisable = ""
+                towrite = ""
+                notify = read_line_in_file(configfilepath, NOTIFICATIONLINE)
+                if notify == "True":
+                    enableordisable = "disable"
+                    towrite = "False"
+                elif notify == "False":
+                    enableordisable = "enable"
+                    towrite = "True"
+                else:
+                    print "Your config-file is corrupted and deleted now, please restart the script to create a new config-file"
+                    os.remove(configfilepath)
+                    sys.exit()
+                yesorno = raw_input("Would you like to " + enableordisable + " notification via Pushbullet? <y/n>\n")
+                if yesorno == 'y':
+                    if notify == "False":
+                        install_and_import_package("pushbullet")
+                        while pushbulletkey == "":
+                            try:
+                                pushbulletkey = raw_input("Please enter your Pushbullet API-access-token. If you haven't set one yet, visit 'https://www.pushbullet.com/#settings/account' \n")
+                                pushbullet.Pushbullet(pushbulletkey)
+                            except pushbullet.InvalidKeyError:
+                                print "The access-token you entered is invalid."
+                                pushbulletkey = ""
+                        write_line_in_file(configfilepath, PUSHBULLETKEYLINE, pushbulletkey)
+                    write_line_in_file(configfilepath, NOTIFICATIONLINE, towrite)
+                    print "Successfully updated the config file"
+                elif yesorno == 'n':
+                    print "Aborted\n"
+                else:
+                    print "Invalid input\n"
+            sys.exit()
         elif paraminput[1] == "-h":
             print_help()
             sys.exit()
@@ -920,6 +978,7 @@ def main():
         password = read_password_from_console()
         write_line_in_file(configfilepath, PASSWORDLINE, base64.b64encode(password))
         write_line_in_file(configfilepath, LOGFILELINE, DEFAULTWRITELOGFILE)
+        write_line_in_file(configfilepath, NOTIFICATIONLINE, DEFAULTNOTIFICATIONLINE)
     else:  # Read from config-file
         num_lines = sum(1 for line in open(configfilepath))
         if num_lines != COUNT_DATA_STORED_IN_CONFIG:
@@ -953,6 +1012,9 @@ def main():
         password_encrypted = read_line_in_file(configfilepath, PASSWORDLINE)
         password = base64.b64decode(password_encrypted)
         createlogfile = read_line_in_file(configfilepath, LOGFILELINE)
+        notification = read_line_in_file(configfilepath, NOTIFICATIONLINE)
+        if notification == "True":
+            pushbulletkey = read_line_in_file(configfilepath, PUSHBULLETKEYLINE)
         overwrite = read_line_in_file(configfilepath, OVERWRITELINE)
 
     # Send requests to get the following cookies: cookie_seminar_session, cookie_shibstate
@@ -1056,6 +1118,7 @@ def main():
             index_tr_close = tbody.find('</tr>')
             counter = 0
             aretherenewfiles = False
+            bushbulletbody = ""
             while index_tr_open >= 0:
                 counter += 1
                 tr = tbody[index_tr_open:index_tr_close]
@@ -1086,6 +1149,7 @@ def main():
                         downloadlink = coursefileshtml[index_downloadlink_start:index_downloadlink_end]
                         downloadlink = 'https://studip.uni-passau.de/studip/folder.php?' + downloadlink
                         downloadlink = parser.unescape(downloadlink)
+                        bushbulletbody += "- " + coursename + ":\n"
                         print "Downloading files for " + coursename + "..."
                         r = requests.get(downloadlink, cookies=cookies_seminar_session_and_shibsession,
                                          allow_redirects=True)
@@ -1117,8 +1181,8 @@ def main():
                             filepath = path.join(pathtoextractzip, file)
                             if not os.path.isdir(filepath):
                                 if not filepath.endswith('dateiliste.csv'):
-                                    a = raw_input("save file " + filepath)
                                     newfile = open(filepath, 'rb')
+                                    bushbulletbody += "\t- " + os.path.basename(newfile.name) + "\n"
                                     savefile(coursename, newfile)
                                     newfile.close()
                                     progress += 1
@@ -1130,6 +1194,13 @@ def main():
             if not aretherenewfiles:
                 print_and_log("There are no new files for you")
             else:
+                if notification == "True":
+                    try:
+                        install_and_import_package("pushbullet")
+                        pb = pushbullet.Pushbullet(pushbulletkey)
+                        pb.push_note("New StudIP files", bushbulletbody)
+                    except Exception, e:
+                        print_and_log("Failed to send notification via Pushbullet")
                 print_and_log("\nFinished")
         else:
             print_and_log("Error: tbody-tags could not be found")
