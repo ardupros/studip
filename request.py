@@ -539,6 +539,7 @@ def savefile(directoryname, file):
 
 
 def main():
+    touch_file("/home/pi/studip/started.txt", 5)
     global username
     global password
     global save_path
@@ -597,8 +598,9 @@ def main():
         appdatapath = path.join("/Users/" + getpass.getuser() + "/Library/Application Support", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
     else:
-        appdatapath = path.join("/etc" + APPNAME)
+        appdatapath = path.join("/etc", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
+    print configfilepath
 
     # Handle command line arguments
     paraminput = sys.argv
