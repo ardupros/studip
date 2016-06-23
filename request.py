@@ -462,7 +462,7 @@ def savefile(directoryname, file):
             createdfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
             id = createdfolder.get('id')
         file_metadata = {'name': filename, 'parents': [id]}
-        response = drive_service.files().list(q="mimeType = '" + filemimetype + "' and '" + id + "' in parents").execute()  # TODO: test override feature
+        response = drive_service.files().list(q="mimeType = '" + filemimetype + "' and '" + id + "' in parents").execute()
         for f in response.get('files', []):
 			if f.get('name') == filename:
 				if overwrite == "True":
@@ -539,7 +539,6 @@ def savefile(directoryname, file):
 
 
 def main():
-    touch_file("/home/pi/studip/started.txt", 5)
     global username
     global password
     global save_path
@@ -600,7 +599,6 @@ def main():
     else:
         appdatapath = path.join("/etc", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
-    print configfilepath
 
     # Handle command line arguments
     paraminput = sys.argv
