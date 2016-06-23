@@ -597,10 +597,7 @@ def main():
         appdatapath = path.join("/Users/" + getpass.getuser() + "/Library/Application Support", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
     else:
-        user = os.getenv("USER")
-        if user == "root":
-            user = os.getenv("SUDO_USER")
-        appdatapath = os.path.expanduser(path.join("~" + user + "/." + APPNAME))
+        appdatapath = path.join("/etc" + APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
 
     # Handle command line arguments
