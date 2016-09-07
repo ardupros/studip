@@ -454,7 +454,7 @@ def savefile(directoryname, file):
             createdfolder = drive_service.files().create(body=folder_metadata, fields='id').execute()
             id = createdfolder.get('id')
         file_metadata = {'name': filename, 'parents': [id]}
-        response = drive_service.files().list(q="mimeType = '" + filemimetype + "' and '" + id + "' in parents").execute()  # TODO: test override feature
+        response = drive_service.files().list(q="mimeType = '" + filemimetype + "' and '" + id + "' in parents").execute()
         for f in response.get('files', []):
 			if f.get('name') == filename:
 				if overwrite == "True":
@@ -589,7 +589,7 @@ def main():
         appdatapath = path.join("/Users/" + getpass.getuser() + "/Library/Application Support", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
     else:
-        appdatapath = path.join("/etc" + APPNAME)
+        appdatapath = path.join("/etc", APPNAME)
         configfilepath = path.join(appdatapath, CONFIGFILENAME)
 
     # Handle command line arguments
