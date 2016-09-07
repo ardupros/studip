@@ -4,14 +4,6 @@
 # The purpose of this script is to check for new files on the StudIP-website of the university of Passau,
 # which are then downloaded and saved in your desired destination folder
 
-# Overview about the cookies:
-#   - cookie_seminar_session
-#   - cookie_shibstate
-#   - sibboleth_cookies (consisting of cookie_jsessionid and cookie_idp_authn_lc_key)
-#   - cookie_idp_session
-#   - shibsession
-
-
 import HTMLParser
 import sys
 import codecs
@@ -1024,52 +1016,28 @@ def main():
         location = r.headers['location']
         r = requests.get(location, allow_redirects=False)
         cookie_shibstate = r.cookies
-        # Send request to get the following cookies: sibboleth_cookies (consisting of cookie_jsessionid and cookie_idp_authn_lc_key)
+
+        # Send request to get the cookie jsessionid
         location = r.headers['location']
         r = requests.get(location, cookies=cookie_seminar_session, allow_redirects=True)
 
-        # Extract the two sibboleth-cookies from request
-        two_sibboleth_cookies = r.request.headers['Cookie']
-        index = two_sibboleth_cookies.find(';')
-        cookie_jsessionid = two_sibboleth_cookies[:index]
+        # Extract the cookie from the request
+        cookie_jsessionid = r.request.headers['Cookie']
         index_jsession = cookie_jsessionid.find('=')
         cookie_jsessionid_name = cookie_jsessionid[:index_jsession]
         cookie_jsessionid_value = cookie_jsessionid[index_jsession + 1:]
-        cookie_idp_authn_lc_key = two_sibboleth_cookies[index + 2:]
-        index_idp_authn = cookie_idp_authn_lc_key.find('=')
-        cookie_idp_authn_lc_key_name = cookie_idp_authn_lc_key[:index_idp_authn]
-        cookie_idp_authn_lc_key_value = cookie_idp_authn_lc_key[index_idp_authn + 1:]
+        cookie_jsessionid_string = '{"' + cookie_jsessionid_name + '":"' + cookie_jsessionid_value + '"}'
+        cookie_jsessionid = eval(cookie_jsessionid_string)
 
-        sibboleth_cookies_string = '{"' + cookie_jsessionid_name + '":"' + cookie_jsessionid_value + '", "' + cookie_idp_authn_lc_key_name + '":"' + cookie_idp_authn_lc_key_value + '"}'
-        sibboleth_cookies = eval(sibboleth_cookies_string)
-
-        # Send post-request with username and password to get the following cookie: cookie_idp_session
-        payload = {'j_username': username, 'j_password': password}
-        r = requests.post("https://sso.uni-passau.de/idp/Authn/UserPassword", cookies=sibboleth_cookies, data=payload,
+        # Send post-request with username and password
+        payload = {'j_username': username, 'j_password': password, '_eventId_proceed':''}
+        r = requests.post("https://sso.uni-passau.de/idp/profile/SAML2/Redirect/SSO;jsessionid=" + cookie_jsessionid_value + "?execution=e1s1", cookies=cookie_jsessionid, data=payload,
                           allow_redirects=False)
-        cookie_idp_session = r.cookies
+        combined_cookie_string = '{"' + cookie_jsessionid_name + '":"' + cookie_jsessionid_value + '","' + str(cookie_shibstate.keys()[0]) +'":"' + str(cookie_shibstate.values()[0]) + '"}'
+        combined_cookie = eval(combined_cookie_string)
 
-        # Combine cookie_idp_session and sibboleth_cookies
-        cookie_session_name = str(cookie_idp_session.keys())
-        cookie_session_name = cookie_session_name.replace("['", "")
-        cookie_session_name = cookie_session_name.replace("']", "")
-        cookie_session_value = str(cookie_idp_session.values())
-        cookie_session_value = cookie_session_value.replace("['", "")
-        cookie_session_value = cookie_session_value.replace("']", "")
-        sibboleth_and_idp_session_cookies_string = '{"' + cookie_jsessionid_name + '":"' + cookie_jsessionid_value + '", "' + cookie_idp_authn_lc_key_name + '":"' + cookie_idp_authn_lc_key_value + '", "' + cookie_session_name + '":"' + cookie_session_value + '"}'
-        sibboleth_and_idp_session_cookies = eval(sibboleth_and_idp_session_cookies_string)
-    except Exception, e:
-        handle_error(e)
-
-    # Send request to receive the html file that contains the Javascript 'Continue'-Button
-    try:
-        location = r.headers['location']
-        r = requests.get(location, cookies=sibboleth_and_idp_session_cookies)
-        javascripttext = r.text
-    except Exception, e:
-        handle_error(e)
-    try:
         # Extract the two variables 'relay-state' and 'saml-response', that must be sent back to the server in a post-request
+        javascripttext = r.text
         indexstart = javascripttext.find('name="RelayState" value="')
         indexend = javascripttext.find('"/>', indexstart)
         relaystate = javascripttext[indexstart + len('name="RelayState" value="'):indexend]
@@ -1085,11 +1053,11 @@ def main():
 
         # Send post-request with 'relay-state' and 'saml-response' to get the following cookie: shibsession
         payload = {'RelayState': relaystate, 'SAMLResponse': samlresonse}
-        r = requests.post("https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST", cookies=cookie_shibstate,
+        r = requests.post("https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST", cookies=combined_cookie,
                           data=payload, allow_redirects=False)
         shibsession = r.cookies
 
-        # Send requests to receive the StudIP start website
+        # Send final requests to receive the StudIP start website
         location = r.headers['location']
         r = requests.get(location, cookies=shibsession, allow_redirects=False)
         location = r.headers['location']
@@ -1098,7 +1066,9 @@ def main():
         r = requests.get(location, cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
         r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/start",
                          cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
-
+    except Exception, e:
+        handle_error(e)
+    try:
         # Send requests to receive the StudIP courses website
         reload(sys)
         sys.setdefaultencoding('utf-8')
