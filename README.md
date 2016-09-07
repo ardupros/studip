@@ -36,5 +36,7 @@ Use: `python request.py -[parameter]`. `-[parameter]` can be one of the followin
 | -c [change directory] | Change the directory where the downloaded files are stored |
 | -u [username] | Change the username, that is used for the studip login |
 | -p [password] | Change the password, that is used for the studip login |
+| -f [force override] | Forces to override files that already exist |
 | -l [logfile] | Enables or disables logfiles |
+| -n [notification] | Enables or disables notifications via Pushbullet for new files|
 | -r [reset] | Resets all your settings |
