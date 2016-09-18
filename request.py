@@ -193,14 +193,14 @@ def read_password_from_console():
 
 
 def read_overwrite_from_console():
-    temp_overwride = ""
-    while temp_overwride != "y" and temp_overwride != "n":
-        temp_overwride = raw_input("Would you like to enable overwriting of existing files?<y/n>\n")
-    if temp_overwride == "y":
-        temp_overwride = "True"
-    elif temp_overwride == "n":
-        temp_overwride = "False"
-    return temp_overwride
+    temp_overwrite = ""
+    while temp_overwrite != "y" and temp_overwrite != "n":
+        temp_overwrite = raw_input("Would you like to enable overwriting of existing files?<y/n>\n")
+    if temp_overwrite == "y":
+        temp_overwrite = "True"
+    elif temp_overwrite == "n":
+        temp_overwrite = "False"
+    return temp_overwrite
 
 
 def read_dropbox_key_from_console():
@@ -404,7 +404,7 @@ def write_to_logfile(string):
         if not os.path.exists(logfilepath):
             open(logfilepath, 'a').close()
         with open(logfilepath, 'a') as f:
-            f.write(time.strftime("%c") + "	" + string + "\n")
+            f.write(time.strftime("%c") + "	" + string.encode("utf-8") + "\n")
             f.close()
 
 
@@ -415,6 +415,7 @@ def print_and_log(string):
 
 def savefile(directoryname, file):
     filename = os.path.basename(file.name)
+    tosave_directory = path.join(save_path, directoryname)
     if wheretosave == "Local":
         tosave_directory = path.join(save_path, directoryname)
         if not os.path.exists(tosave_directory):
@@ -1070,12 +1071,9 @@ def main():
         handle_error(e)
     try:
         # Send requests to receive the StudIP courses website
-        reload(sys)
-        sys.setdefaultencoding('utf-8')
         r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/my_courses",
                          cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
         html = r.text
-
         index_id_my_seminars = html.find('id="my_seminars"')
         index_tbody_open = html.find('</thead>', index_id_my_seminars)
         index_tbody_close = html.find('</table>', index_tbody_open)
@@ -1085,7 +1083,7 @@ def main():
             index_tr_close = tbody.find('</tr>')
             counter = 0
             aretherenewfiles = False
-            bushbulletbody = ""
+            pushbulletbody = ""
             while index_tr_open >= 0:
                 counter += 1
                 tr = tbody[index_tr_open:index_tr_close]
@@ -1098,7 +1096,7 @@ def main():
                     coursename = ' '.join(coursename.split())
                 if tr.find('https://studip.uni-passau.de/studip/assets/images/icons/red/new/files.svg') >= 0:
                     aretherenewfiles = True
-                    print_and_log("\nThere are new files for the course " + coursename)
+                    print_and_log("There are new files for the course " + coursename)
                     index_temp = tr.find('title="Teilnehmende"')
                     index_href_start = tr.find('<a href="', index_temp)
                     index_href_start = index_href_start + len('<a href="')
@@ -1116,12 +1114,13 @@ def main():
                         downloadlink = coursefileshtml[index_downloadlink_start:index_downloadlink_end]
                         downloadlink = 'https://studip.uni-passau.de/studip/folder.php?' + downloadlink
                         downloadlink = parser.unescape(downloadlink)
-                        bushbulletbody += "- " + coursename + ":\n"
+                        pushbulletbody += "- " + coursename + ":\n"
                         print "Downloading files for " + coursename + "..."
                         r = requests.get(downloadlink, cookies=cookies_seminar_session_and_shibsession,
                                          allow_redirects=True)
                         sc = set(FORBIDDEN_CHARS)
                         coursename = ''.join([c for c in coursename if c not in sc])
+                        print type(coursename)
                         pathtozip = path.join(appdatapath, coursename + ".zip")
                         pathtoextractzip = path.join(appdatapath, coursename)
                         with open(pathtozip, "wb") as code:
@@ -1131,11 +1130,12 @@ def main():
                             os.makedirs(pathtoextractzip)
                         zip = zipfile.ZipFile(pathtozip, 'r')
                         numberoffiles = len(zip.infolist())
+                        import chardet
                         for file in zip.infolist():
-                            filename = file.filename
+                            filename = unicode(file.filename, "cp437")
                             tosave = path.join(pathtoextractzip, filename)
                             outputfile = open(tosave, "wb")
-                            shutil.copyfileobj(zip.open(filename), outputfile)
+                            shutil.copyfileobj(zip.open(file.filename), outputfile)
                             outputfile.close()
                         zip.close()
                         if os.path.exists(pathtozip):
@@ -1149,7 +1149,7 @@ def main():
                             if not os.path.isdir(filepath):
                                 if not filepath.endswith('dateiliste.csv'):
                                     newfile = open(filepath, 'rb')
-                                    bushbulletbody += "\t- " + os.path.basename(newfile.name) + "\n"
+                                    pushbulletbody += "\t- " + os.path.basename(newfile.name) + "\n"
                                     savefile(coursename, newfile)
                                     newfile.close()
                                     progress += 1
@@ -1165,10 +1165,10 @@ def main():
                     try:
                         install_and_import_package("pushbullet")
                         pb = pushbullet.Pushbullet(pushbulletkey)
-                        pb.push_note("New StudIP files", bushbulletbody)
+                        pb.push_note("New StudIP files", pushbulletbody)
                     except Exception, e:
                         print_and_log("Failed to send notification via Pushbullet")
-                print_and_log("\nFinished")
+                print_and_log("Finished")
         else:
             print_and_log("Error: tbody-tags could not be found")
 
