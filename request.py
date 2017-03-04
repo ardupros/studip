@@ -1065,14 +1065,14 @@ def main():
         cookies_seminar_session_and_shibsession = cookie_seminar_session.copy()
         cookies_seminar_session_and_shibsession.update(shibsession)
         r = requests.get(location, cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
-        r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/start",
-                         cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
+        cookies_seminar_session_and_shibsession = r.cookies
+        cookies_seminar_session_and_shibsession.update(shibsession)
     except Exception, e:
         handle_error(e)
     try:
         # Send requests to receive the StudIP courses website
         r = requests.get("https://studip.uni-passau.de/studip/dispatch.php/my_courses",
-                         cookies=cookies_seminar_session_and_shibsession, allow_redirects=False)
+                         cookies=cookies_seminar_session_and_shibsession, allow_redirects=True)
         html = r.text
         index_id_my_seminars = html.find('id="my_seminars"')
         index_tbody_open = html.find('</thead>', index_id_my_seminars)
@@ -1120,7 +1120,6 @@ def main():
                                          allow_redirects=True)
                         sc = set(FORBIDDEN_CHARS)
                         coursename = ''.join([c for c in coursename if c not in sc])
-                        print type(coursename)
                         pathtozip = path.join(appdatapath, coursename + ".zip")
                         pathtoextractzip = path.join(appdatapath, coursename)
                         with open(pathtozip, "wb") as code:
@@ -1130,7 +1129,6 @@ def main():
                             os.makedirs(pathtoextractzip)
                         zip = zipfile.ZipFile(pathtozip, 'r')
                         numberoffiles = len(zip.infolist())
-                        import chardet
                         for file in zip.infolist():
                             filename = unicode(file.filename, "cp437")
                             tosave = path.join(pathtoextractzip, filename)
